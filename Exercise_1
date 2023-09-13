@@ -1,0 +1,94 @@
+/*
+ * TestASM for Raspberry Pi Pico
+ * Based on pico-asm by smittytone. Original copyright reproduced below.
+ *
+ * @version		1.0.0
+ * @author		Cesar Campos
+ * @copyright	2023
+ * @licence		None
+ *
+ */
+
+/*
+ * pico-asm for Raspberry Pi Pico
+ *
+ * @version     1.2.0
+ * @author      smittytone
+ * @copyright   2022
+ * @licence     MIT
+ *
+ */
+
+/*
+ * CONSTANTS
+ */
+.equ    LED_PIN,        25
+.equ    GPIO_DIR_IN,    0
+.equ    GPIO_DIR_OUT,   1
+.equ    PIN_HIGH,       1
+.equ    PIN_LOW,        0
+
+/*
+ * ASSEMBLY HEADER
+ *
+ * NOTE These macros need to be on separate lines
+ */
+.syntax unified                     // Use ARM unified syntax, ie.
+                                    // mandate S suffix for lo registers
+.thumb_func                         // This code uses Thumb instructions
+.global main                        // Set entry point
+
+/*
+ * RUNTIME START
+ */
+main:
+init:   bl stdio_init_all           // Jump to SDK STDIO initialisation routine
+        movs r0, #0x80              // Set the delay period
+        lsls r0, #4
+        bl sleep_ms                 // Delay to allow the STDIO-over-USB to ready
+
+        movs r0, #LED_PIN           // Set the pin number
+        bl gpio_init                // Jump to SDK GPIO initialisation routine
+
+        movs r0, #LED_PIN           // Set the pin number
+        movs r1, #GPIO_DIR_OUT      // Set the pin direction
+        bl gpio_set_direction       // Jump to SDK pin direction routine
+
+loop:   movs r0, #LED_PIN           // Set the pin number
+        movs r1, #PIN_HIGH          // Set the pin state
+        bl gpio_set_state           // Jump to SDK pin state routine
+		
+        ldr r0, =led_on_message     // Load the address of "LED ON" message b1 pintf
+        bl printf
+
+        ldr r0, DELAY_TIME_MS       // Set the delay period
+                                    // NOTE This form assembles as PC offset addressing,
+                                    //      so make sure DELAY_TIME_MS is an address in the
+                                    //      code space rather not the .data space
+        bl sleep_ms                 // Delay
+
+        movs r0, #LED_PIN           // Set the pin number
+        movs r1, #PIN_LOW           // Set the pin state
+        bl gpio_set_state           // Jump to SDK pin state routine
+
+        ldr r0, =led_off_message    // Load the address of "LED OFF" message b1 printf
+        bl printf
+
+        ldr r0, DELAY_TIME_MS       // Set the delay period
+        bl sleep_ms                 // Delay
+
+        b loop                      // Loop infinitely
+
+/*
+ Use four-bytes to store the delay time so that we can load
+ into r0 a 32-bit value, rather than move in an 8-bit value
+ */
+.align 4
+DELAY_TIME_MS:  .word           1000
+
+.align 4
+led_on_message:
+        .asciz "LED ON\n"
+
+led_off_message:
+        .asciz "LED OFF\n"
